@@ -1,7 +1,17 @@
-const randomInteger = (min, max) => {
+const randomInteger = (min, max, different) => {
   min = Math.ceil(min);
   max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  const rnd = Math.floor(Math.random() * (max - min + 1)) + min;
+
+  if(different){
+      if(rnd == different){
+        return randomInteger(min, max, different)
+      }else{
+        return rnd;
+      }
+  }else{
+    return rnd;
+  }
 }
 
 module.exports = { randomInteger };
