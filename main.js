@@ -1,34 +1,26 @@
+const fs = require('fs');
 const { randomInteger } = require('./math');
 
-const NUMBER_OF_MOVEMENT = 144;
+let [,,POPULATION, MUTATION, MAZE_FILE] = process.argv;
+
+
+const NUMBER_OF_MOVEMENT = 200;
 const MAX_ITERATION = 10000;
-const POPULATION = 300;
-const MUTATION = 8;
+POPULATION = Number(POPULATION) || 200;
+MUTATION = Number(MUTATION) || 8;
 
+const file = fs.readFileSync(MAZE_FILE, 'utf8');
 
-// const maze = [
-//   [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-//   [1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1],
-//   [1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0],
-//   [1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-//   [0, 0, 0, 1, 0, 0, 3, 0, 1, 0, 1, 1],
-//   [1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1],
-//   [1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0],
-//   [0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0],
-//   [0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0],
-//   [1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0],
-//   [1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1],
-//   [1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0]
-// ];
+let maze = [];
 
+let possibleMaze = file.split('\n');
 
-const maze = [
-  [2, 1, 1, 1, 1, 0],
-  [0, 0, 1, 0, 0, 0],
-  [1, 0, 0, 0, 1, 3],
-  [1, 1, 1, 0, 0, 0]
-];
+const [size] = possibleMaze;
+possibleMaze = possibleMaze.slice(1);
 
+for (var i = 0; i < Number(size); i++) {
+  maze[i] = possibleMaze[i].split(' ').map(e => Number(e));
+}
 
 
 const comparator = (a,b) => {
@@ -146,7 +138,7 @@ const evaluation = (maze, chromosome) => {
         }
     }
 
-  const score = Math.abs((finishPosition[0] - initialPosition[0]) + (finishPosition[1] - initialPosition[1])) + penalties;
+  const score = Math.abs(finishPosition[0] - initialPosition[0]) + Math.abs(finishPosition[1] - initialPosition[1]) + penalties;
   return [score, chromosome];
 };
 
@@ -168,7 +160,7 @@ function setCharAt(str,index,chr) {
 const mutate = (chromosome) => {
   const rndPath = randomInteger(0, 3);
 
-  for (var i = 0; i < 2; i++) {
+  for (var i = 0; i < 4; i++) {
     chromosome[1] = setCharAt(chromosome[1], randomInteger(0, chromosome[1].length), rndPath);
   }
 
