@@ -6,6 +6,7 @@ let [,,POPULATION, MUTATION, MAZE_FILE] = process.argv;
 
 const NUMBER_OF_MOVEMENT = 200;
 const MAX_ITERATION = 10000;
+
 POPULATION = Number(POPULATION) || 200;
 MUTATION = Number(MUTATION) || 8;
 
@@ -193,7 +194,7 @@ const crossover = (parent1, parent2) => {
   const cut = Math.floor(minimum / 3);
 
   const child1 = [null, pathFromParent1.substr(0, cut) + pathFromParent2.substr(cut, cut * 2) + pathFromParent1.substr(cut * 2)];
-  const child2 = [null, pathFromParent2.substr(0, cut) + pathFromParent1.substr(cut, cut * 2) + pathFromParent2.substr(cut, cut * 2)];
+  const child2 = [null, pathFromParent2.substr(0, cut) + pathFromParent1.substr(cut, cut * 2) + pathFromParent2.substr(cut * 2)];
 
   return [child1, child2];
 }
@@ -273,7 +274,3 @@ for (let i = 0; i < MAX_ITERATION; i++) {
   console.log(`BEST OF GENERATION  ${i}  FITNESS: ${score}`);
   console.log(translateSolution(bestFit));
 };
-
-
-
-
