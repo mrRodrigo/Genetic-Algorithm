@@ -1,105 +1,210 @@
-const Point = require('./Point');
-const { printMazePath } = require('./Console');
-const { randomInteger } = require('./Math');
+const { randomInteger } = require('./math');
+
+const NUMBER_OF_MOVEMENT = 144;
+const MAX_ITERATION = 10000;
+const POPULATION = 300;
+const MUTATION = 8;
 
 
-let MAX_ITERATION = 50;
-let POPULATION = 2;
+// const maze = [
+//   [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+//   [1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1],
+//   [1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0],
+//   [1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+//   [0, 0, 0, 1, 0, 0, 3, 0, 1, 0, 1, 1],
+//   [1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1],
+//   [1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0],
+//   [0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0],
+//   [0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0],
+//   [1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0],
+//   [1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1],
+//   [1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0]
+// ];
 
-const initMaze = new Point(0,0);
-const endMaze = new Point(11,11);
-const mazeSize = 12;
 
-const maze = [ 
-  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  [1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
-  [1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0],
-  [1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-  [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1],
-  [1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1],
-  [1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0],
-  [0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0],
-  [0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0],
-  [1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0],
-  [1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1],
-  [1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0]
+const maze = [
+  [2, 1, 1, 1, 1, 0],
+  [0, 0, 1, 0, 0, 0],
+  [1, 0, 0, 0, 1, 3],
+  [1, 1, 1, 0, 0, 0]
 ];
 
 
 
-const fitness = position  => { 
-    if(!position) return;
-    if (typeof position != 'Object') position = position.slice(-1)[0];
-    return Math.abs(position.x - endMaze.x) + Math.abs(position.y - endMaze.y);
-};
+const comparator = (a,b) => {
+  if (a[0] < b[0])
+    return -1;
+  if (a[0] > b[0])
+    return 1;
+  return 0;
+}
 
-const isWalkable = (x, y) => {
-    // 0 not have wall, so return true
-    // 1 have one wall, so return false
-    return !maze[y][x];
-};
+const findPos = (maze, el) => {
+  var i = 0,
+      index;
+  for (; i < maze.length; i++) {
+      index = maze[i].indexOf(el);
+      if (index > -1) {
+          return [i, index];
+      }
+  }
+}
 
-const isValidPath = (path) => {
-  const { x, y } = path;
+const makeChromosome = () => {
+  let chromosome = '';
+  for (var i = 0; i < NUMBER_OF_MOVEMENT; i++) {
+      chromosome += String(Math.floor(Math.random() * 4));
+  }
+  //return [<aptidao>, <caminho>]
+  return [null, chromosome];
+}
 
-  if (y > -1 && x > - 1 && y < mazeSize && x < mazeSize && isWalkable(x, y))
-    return true;
+const makePopulation = (sizeOfPopulation) => {
+  const population = [];
+  for (var i = 0; i < sizeOfPopulation; i++) {
+      population.push(makeChromosome());
+  }
+  return population;
+}
 
-  return false;
-};
+const didPlayerHitWall = (el) => {
+  return el === 1;
+}
 
-const hasDirectionToGo = (currentPosition) => {
-    const { x, y } = currentPosition;
+const didPlayerHitFinish = (el) => {
+  return el === 3;
+}
 
-    // apply one step for all possible positions
-    const	UP = y - 1;
-    const DOWN = y + 1;
-    const RIGHT = x + 1;
-    const LEFT = x - 1;
-    
-    // check limits of maze and positions that not have one wall
-    const myUP = UP > -1 && isWalkable(x, UP)
-    const myDOWN = DOWN < mazeSize && isWalkable(x, DOWN)
-    const myRIGHT = RIGHT < mazeSize && isWalkable(RIGHT, y)
-    const myLEFT = LEFT > -1 && isWalkable(LEFT, y)
+const didPlayerCanMove = (maze, direction, pos) => {
+  var row = maze.length,
+      column = maze[0].length;
+  switch (direction) {
+      case '0':
+          return pos[0] - 1  > -1;
 
-    const possiblePaths = [myUP, myDOWN, myRIGHT, myLEFT];
+      case '1':
+          return pos[1] + 1 < column;
 
-    return possiblePaths.some(e => e === true);
-};
+      case '2':
+          return pos[0] + 1 < row;
 
-const randomDirection = (individual) => {
-  const { x, y } = individual.slice(-1)[0];
+      case '3':
+          return pos[1] - 1 > -1;
+  }
+}
 
-  // apply one step for all possible positions
-  const	UP = y - 1;
-  const DOWN = y + 1;
-  const RIGHT = x + 1;
-  const LEFT = x - 1;
+const move = (maze, direction, pos) => {
+  var isOver = false,
+      penalty = 0,
+      newPos = pos;
+  if (!didPlayerCanMove(maze, direction, pos)) {
+      return [pos, 1, isOver];
+  } else {
+      switch (direction) {
+          case '0':
+              newPos[0] = newPos[0] - 1;
+              didPlayerHitWall(maze[newPos[0]][newPos[1]]) ? penalty++ : 0;
+              break;
+
+          case '1':
+              newPos[1] = newPos[1] + 1;
+              didPlayerHitWall(maze[newPos[0]][newPos[1]]) ? penalty++ : 0;
+              break;
+
+          case '2':
+              newPos[0] = newPos[0] + 1;
+              didPlayerHitWall(maze[newPos[0]][newPos[1]]) ? penalty++ : 0;
+              break;
+
+          case '3':
+              newPos[1] = newPos[1] - 1;
+              didPlayerHitWall(maze[newPos[0]][newPos[1]]) ? penalty++ : 0;
+              break;
+      }
+  }
+
+  isOver = didPlayerHitFinish(maze[pos[0]][pos[1]]);
   
-  const possiblePositions = [new Point(x, UP), new Point(x, DOWN), new Point(RIGHT, y), new Point(LEFT, y)];
+  return [newPos, penalty, isOver];
+}
+
+const evaluation = (maze, chromosome) => {
+
+    let penalties = 0,
+        initialPosition = findPos(maze, 2), //
+        finishPosition = findPos(maze, 3)
+
+      for (let i = 0; i < chromosome.length; i++) {
+        const resultOfMove = move(maze, chromosome[i], initialPosition);
+        initialPosition = resultOfMove[0];
+        penalties += resultOfMove[1];
   
-  const validPositions = possiblePositions.filter( 
-    pp => !individual.some(p => p.x == pp.x && p.y == pp.y)
-  )
-  
-  return validPositions[randomInteger(0, validPositions.length - 1)];
-};
-
-const generateRandomPath = (individual = []) => {
-    if(individual.length <= 0)
-      individual.push(new Point(initMaze.x, initMaze.y))
-
-    if(hasDirectionToGo(individual.slice(-1)[0])){
-      const path = randomDirection(individual);
-
-      if(isValidPath(path))
-          individual.push(path);
-      else return //dead
-
-      generateRandomPath(individual);
+        // se chegou no final corta o caminho dele até o final
+        if (resultOfMove[2]) {
+            chromosome = chromosome.substr(0, i + 1);
+            break;
+        }
     }
+
+  const score = Math.abs((finishPosition[0] - initialPosition[0]) + (finishPosition[1] - initialPosition[1])) + penalties;
+  return [score, chromosome];
 };
+
+const calculateScoreOfPopulation = (population, maze) => {
+  const newPop = [];
+
+  population.map(chromosome => {
+      newPop.push(evaluation(maze, chromosome[1]));
+  }) 
+
+  return newPop;
+}
+
+function setCharAt(str,index,chr) {
+  if(index > str.length-1) return str;
+  return str.substring(0,index) + chr + str.substring(index+1);
+}
+
+const mutate = (chromosome) => {
+  const rndPath = randomInteger(0, 3);
+
+  for (var i = 0; i < 2; i++) {
+    chromosome[1] = setCharAt(chromosome[1], randomInteger(0, chromosome[1].length), rndPath);
+  }
+
+  return chromosome;
+}
+
+const mutation = (populationToMutate, generation) => {
+  const population = [];
+  if(generation % MUTATION == 0){
+    for (var i = 0; i < POPULATION; i++) {
+      population[i] = mutate(populationToMutate[i]);
+    }
+    console.log('mutation');
+    return population;
+  }else{
+    return populationToMutate;
+  }
+};
+
+const crossover = (parent1, parent2) => {
+  const [,pathFromParent1] = parent1;
+  const [,pathFromParent2] = parent2;
+  const CUT_IN = 5;
+
+  const minimum = 
+      pathFromParent1.length < pathFromParent2.length 
+      ? pathFromParent1.length 
+      : pathFromParent2.length;
+
+  const cut = Math.floor(minimum / 3);
+
+  const child1 = [null, pathFromParent1.substr(0, cut) + pathFromParent2.substr(cut, cut * 2) + pathFromParent1.substr(cut * 2)];
+  const child2 = [null, pathFromParent2.substr(0, cut) + pathFromParent1.substr(cut, cut * 2) + pathFromParent2.substr(cut, cut * 2)];
+
+  return [child1, child2];
+}
 
 const tournament = (population) => {
   const rndX = randomInteger(0, POPULATION - 1);
@@ -108,78 +213,75 @@ const tournament = (population) => {
   const x = population[rndX];
   const y = population[rndY];
 
-  return fitness(x) < fitness(y) ? x : y;
-};
+  return x[0] < y[0] ? x : y;
+}
 
-const crossOver = (population, nextPopulation = []) => {
-  const parentOne = tournament(population);
-  const parentTwo = tournament(population);
+const selection = (population) => {
+  const parent1 = tournament(population);
+  const parent2 = tournament(population);
+  return [parent1, parent2];
+}
 
-  // const elitism = population.sort((a, b) => fitness(a) - fitness(b))[0];
-  // nextPopulation[0] = elitism;
+const nextGeneration = (population) => {
+  const nextPopulation = [];
 
-  for(let i = 0; i < POPULATION-1; i++){
-      nextPopulation[i] = parentOne;
-      nextPopulation[i+1] = parentTwo;
+  for (var i = 0; i < POPULATION/2; i++) {
+      const [parent1, parent2] = selection(population);
+      const [child1, child2] = crossover(parent1, parent2);
+      nextPopulation.push(child1, child2);
   }
+
   return nextPopulation;
-};
-
-
-const mutateIndividual = (individual) => {
-  if(individual.length > 1){
-    const pointToCut = individual.length / 2;
-
-    const preserve = individual.slice(0, pointToCut);
-    const modify = individual.slice(pointToCut);
-
-    const newPaths = generateRandomPath(modify);
-    
-    preserve.concat(newPaths);
-
-    return preserve; 
-  }
-  return individual;
-};
-
-
-const mutate = (populationToMutate) => {
-  for(let i = 0; i < POPULATION; i++ ){
-    populationToMutate[i] = mutateIndividual(populationToMutate[i]);
-  }
-  return populationToMutate;
-};
-
-const initPopulation = () => {
-    const population = [];
-    for(let i = 0; i < POPULATION; i++ ){
-        const path = [];
-        generateRandomPath(path);
-        population[i] = path;
-    }
-    return population;
 }
 
-let population = initPopulation();
+var translateSolution = function (solution) {
+  var translation = [];
+  for (i = 0; i < solution[1].length; i++) {
+      switch (solution[1][i]) {
+          case '0':
+              translation.push('↑');
+              break;
 
-for(let GENERATION = 0; GENERATION < MAX_ITERATION; GENERATION++ ){
-  if(GENERATION != 0){
-    let nextPopulation = crossOver(population);
+          case '1':
+              translation.push('→');
+              break;
 
-    for(let i = 0; i < POPULATION; i++ ){
-      const path = nextPopulation[i];
-      generateRandomPath(path);
-    }
-    
-    // if (GENERATION % 2 === 0)
-    //   nextPopulation = mutate(nextPopulation);
-  
-    population = nextPopulation;
-    console.log('=====');
-    population.map(e => printMazePath(e, maze, 11));
-  }else{
-    console.log('===== ZERO');
-    population.map(e => printMazePath(e, maze, 11));
+          case '2':
+              translation.push('↓');
+              break;
+
+          case '3':
+              translation.push('←');
+              break;
+      ;}
   }
+
+  return translation.join('  ');
 }
-  
+
+let population = makePopulation(POPULATION);
+
+for (let i = 0; i < MAX_ITERATION; i++) {
+
+  const scoredPopulation = calculateScoreOfPopulation(population, maze).sort(comparator);
+  const [bestFit] = scoredPopulation;
+
+  // verifica se score é zero, ou seja se chegou ao final
+  const [score] = bestFit;
+
+  if (score === 0) {
+      console.log(`PATH FOUND ON GENERATION ${i}`);
+      console.log(translateSolution(bestFit));
+      break;
+  }
+
+  const nextGen = nextGeneration(scoredPopulation);
+
+  population = mutation(nextGen, i);
+  console.log(`BEST OF GENERATION  ${i}  FITNESS: ${score}`);
+  console.log(translateSolution(bestFit));
+};
+
+
+
+
